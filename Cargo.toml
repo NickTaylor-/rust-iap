@@ -1,0 +1,12 @@
+[package]
+name = "rust-iap"
+version = "0.1.0"
+authors = ["Nick Taylor <nick@nicktaylor.ca>"]
+edition = "2018"
+
+[dependencies]
+hyper = "*"
+pretty_env_logger = "*"
+jsonwebtoken = "*"
+serde_derive = "*"
+serde = "*"
