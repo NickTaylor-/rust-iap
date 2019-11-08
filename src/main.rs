@@ -10,10 +10,10 @@ use hyper::rt::Future;
 use hyper::service::service_fn;
 use futures::future;
 
-use jwt::{encode, decode, Header, Algorithm, Validation};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Claims {
+struct Claim {
     aud: String,
     sub: String,
     exp: usize,
@@ -37,7 +37,10 @@ fn route(req: Request<Body>) -> FutureResponse {
     match (req.method(), req.uri().path()) {
         (&Method::GET, "/authorize") => {
             authorize(req, &mut res);
-        }
+        },
+        (&Method::GET, "/token") => {
+            token(req, &mut res);
+        },
 
         _ => {
             *res.status_mut() = StatusCode::NOT_FOUND;
@@ -45,6 +48,12 @@ fn route(req: Request<Body>) -> FutureResponse {
     }
 
     Box::new(future::ok(res))
+}
+
+fn token(_req: Request<Body>, res: &mut Response<Body>) {
+    let claims = Claim { aud: "example".to_string(), sub: "unknown".to_string(), exp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as usize + 600 };
+    let token = jwt::encode(&jwt::Header::default(), &claims, "secret".as_ref()).unwrap();
+    *res.body_mut() = Body::from(token);
 }
 
 fn authorize(req: Request<Body>, res: &mut Response<Body>) {
@@ -61,7 +70,7 @@ fn authorize(req: Request<Body>, res: &mut Response<Body>) {
         None => "",
     };
 
-    let token = match decode::<Claims>(encoded_token, "secret".as_ref(), &Validation::default()) {
+    let token = match jwt::decode::<Claim>(encoded_token, "secret".as_ref(), &jwt::Validation::default()) {
         Ok(t) => t,
         Err(e) => {
             error!("{:?}", e);
