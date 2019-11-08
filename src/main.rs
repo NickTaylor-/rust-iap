@@ -1,5 +1,7 @@
 extern crate hyper;
 extern crate jsonwebtoken as jwt;
+extern crate pretty_env_logger;
+#[macro_use] extern crate log;
 #[macro_use] extern crate serde_derive;
 extern crate futures;
 
@@ -18,6 +20,7 @@ struct Claims {
 }
 
 fn main() {
+    pretty_env_logger::init_timed();
     let addr = ([0, 0, 0, 0], 3000).into();
     let server = Server::bind(&addr).serve(|| service_fn(route)).map_err(|e| eprintln!("Server error: {}", e));
 
@@ -28,6 +31,8 @@ type FutureResponse = Box<dyn Future<Item = Response<Body>, Error = hyper::Error
 
 fn route(req: Request<Body>) -> FutureResponse {
     let mut res = Response::new(Body::empty());
+
+    error!("Received {} request for {}", req.method(), req.uri().path());
 
     match (req.method(), req.uri().path()) {
         (&Method::GET, "/authorize") => {
@@ -47,7 +52,8 @@ fn authorize(req: Request<Body>, res: &mut Response<Body>) {
         Some(t) =>
             match t.to_str() {
                 Ok(s) => s,
-                Err(_) => {
+                Err(e) => {
+                    error!("{:?}", e);
                     *res.status_mut() = StatusCode::UNAUTHORIZED;
                     return;
                 }
@@ -57,7 +63,8 @@ fn authorize(req: Request<Body>, res: &mut Response<Body>) {
 
     let token = match decode::<Claims>(encoded_token, "secret".as_ref(), &Validation::default()) {
         Ok(t) => t,
-        Err(_) => {
+        Err(e) => {
+            error!("{:?}", e);
             *res.status_mut() = StatusCode::UNAUTHORIZED;
             return;
         },
