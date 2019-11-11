@@ -1,0 +1,10 @@
+apiVersion: skaffold/v1
+kind: Config
+build:
+  artifacts:
+    - image: rust-iap
+  local: {}
+deploy:
+  kubectl:
+    manifests:
+      - deploy/development/*.yaml
